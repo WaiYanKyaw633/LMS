@@ -1,7 +1,8 @@
-const { BorrowRecord, Book } = require('../models');
+const { BorrowRecord, Book ,Coin } = require('../models');
 const Sequelize = require('sequelize');
 const Op = Sequelize.Op;
 const sequelize = require('sequelize'); 
+
 
 
 exports.viewBooksByCategory = async (req, reply) => {
@@ -186,9 +187,8 @@ exports.viewMyBorrowedBooks = async (req, reply) => {
           borrowCount,
         };
       });
-  
-      reply.send({
-        message: 'Most popular books found',
+           reply.send({
+        message: 'Most popular Books',
         data: result,
       });
     } catch (error) {
@@ -200,8 +200,7 @@ exports.viewMyBorrowedBooks = async (req, reply) => {
   exports.mostBorrowedBookInCategory = async (req, reply) => {
     const { category } = req.params; 
     try {
-    
-      const mostBorrowedBook = await BorrowRecord.findAll({
+     const mostBorrowedBook = await BorrowRecord.findAll({
         include: [
           {
             model: Book,
@@ -219,9 +218,7 @@ exports.viewMyBorrowedBooks = async (req, reply) => {
   
       if (!mostBorrowedBook || mostBorrowedBook.length === 0) {
         return reply.status(404).send({ message: 'No books found in this category or no borrow records' });
-      }
-  
-      
+      }    
       const book = mostBorrowedBook[0].Book; 
       const borrowCount = mostBorrowedBook[0].dataValues.borrowCount;
   
@@ -239,3 +236,60 @@ exports.viewMyBorrowedBooks = async (req, reply) => {
     }
   };
   
+
+exports.buyCoins = async (req, reply) => {
+  const { amount } = req.body; 
+  if (!amount || amount <= 0) {
+    return reply.status(400).send({ message: 'Invalid coin amount' });
+  }
+  try {
+   const user = await User.findByPk(req.user.id);
+    user.coins += amount;
+    await user.save();
+
+    await Coin.create({
+      userId: req.user.id,
+      amount,
+    });
+
+      reply.status(200).send({
+      message: `Successfully bought ${amount} coins.`,
+      coins: user.coins,
+    });
+  } catch (error) {
+    console.error('Error buying coins:', error);
+    reply.status(500).send({ error: 'Failed to buy coins' });
+  }
+};
+
+
+exports.buyBookWithCoins = async (req,reply) => {
+  try {
+    const { userId, bookId } = req.body;
+    
+    const book = await Book.findByPk(bookId);
+    
+    if (!book) {
+      return res.status(404).json({ message: 'Book not found' });
+    }
+    const user = await User.findByPk(userId);    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    if (book.isFree) {
+      return res.status(200).json({ message: 'Book purchased successfully for free' });
+    }
+    if (user.coins < book.priceInCoins) {
+      return res.status(400).json({ message: 'Insufficient coins' });
+    }
+    user.coins -= book.priceInCoins;
+    await user.save();
+
+    await UserBook.create({ userId, bookId });
+    return res.status(200).json({
+      message: 'Book purchased successfully with coins',
+    });
+  } catch (error) {
+    return res.status(500).json({ message: 'Internal Server Error' });
+  }
+};

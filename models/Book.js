@@ -33,6 +33,14 @@ const Book = sequelize.define('Book', {
     type: DataTypes.BOOLEAN,
     defaultValue: false,
   },
+  priceInCoins: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0, 
+  },
+  isFree: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false, 
+  },
 }, {
   timestamps: true, 
 });

@@ -39,28 +39,82 @@ exports.viewBorrowedBooks = async (req, reply) => {
     }
   };
   
-
-exports.createBook = async (req, reply) => {
+  exports.createBook = async (req, reply) => {
     try {
-      const { title, author, category } = req.body;
-         if (!title || !author || !category) {
+      const { title, author, category, stock, priceInCoins, isFree } = req.body;
+  
+      if (!title || !author || !category) {
         return reply.status(400).send({ message: 'All fields are required' });
-      }
+      } 
       const existingBook = await Book.findOne({ where: { title } });
       if (existingBook) {
         return reply.status(400).send({ message: 'A book with this title already exists' });
       }
-         const newBook = await Book.create({
+      const validStock = Number.isInteger(Number(stock)) ? Number(stock) : 0;
+      const validPriceInCoins = Number.isInteger(Number(priceInCoins)) ? Number(priceInCoins) : 0;
+  
+      const newBook = await Book.create({
         title,
         author,
         category,
+        stock: validStock, 
+        priceInCoins: validPriceInCoins, 
+        isFree: isFree === undefined || isFree === null || isFree === "" ? false : isFree,
       });
-       reply.status(201).send({ message: 'Book created successfully', book: newBook });
+  
+      return reply.status(201).send({ message: 'Book created successfully', book: newBook });
     } catch (error) {
       console.error('Error creating book:', error);
-      reply.status(500).send({ message: 'Failed to create book' });
+      return reply.status(500).send({ message: 'Failed to create book' });
     }
   };
+  
+  module.exports.updateBook = async (req, reply) => {
+    try {
+      const { id } = req.params;
+      const { title, author, category, priceInCoins, isFree, stock } = req.body;
+  
+      const book = await Book.findByPk(id);
+      if (!book) {
+        return reply.status(404).send({ message: 'Book not found' });
+      }
+      const updatedFields = {};
+      if (title) {
+        book.title = title;
+        updatedFields.title = title;
+      }
+      if (author) {
+        book.author = author;
+        updatedFields.author = author;
+      }
+      if (category) {
+        book.category = category;
+        updatedFields.category = category;
+      }
+      if (priceInCoins) {
+        book.priceInCoins = priceInCoins;
+        updatedFields.priceInCoins = priceInCoins;
+      }
+      if (isFree !== undefined && isFree !== '') {
+        book.isFree = isFree;
+        updatedFields.isFree = isFree;
+      }
+      if (stock !== undefined && stock !== '') {
+        book.stock = stock;
+        updatedFields.stock = stock;
+      }
+      await book.save();
+      return reply.status(200).send({
+        message: 'Book updated successfully',
+        updatedFields,
+      });
+    } catch (error) {
+      console.error('Error updating book:', error);
+      return reply.status(500).send({ message: 'Internal Server Error' });
+    }
+  };
+  
+  
   
   exports.viewBooks = async (req, reply) => {
     try {
@@ -72,48 +126,7 @@ exports.createBook = async (req, reply) => {
       console.error('Error fetching books:', error);
       reply.status(500).send({ message: 'Failed to retrieve books' });
     }
-  };
-  
-  exports.updateBook = async (req, reply) => {
-    try {
-      const { id } = req.params; 
-      const { title, author, category, stock } = req.body;    
-      const book = await Book.findByPk(id);
-      if (!book) {    
-      return reply.status(404).send({ message: 'Book not found' });
-      }  
-      if (title && title === book.title) {
-        return reply.status(400).send({ message: 'The new title must be different from the current title' });
-      }     
-      const updatedFields = {};
-      if (title && title !== book.title) {
-        book.title = title; 
-        updatedFields.title = title;
-      }
-      if (author && author !== book.author) {
-        book.author = author;
-        updatedFields.author = author;
-      }
-      if (category && category !== book.category) {
-        book.category = category;
-        updatedFields.category = category;
-      }
-      if (stock !== undefined && stock !== book.stock) {
-        book.stock = stock;
-        updatedFields.stock = stock;
-      }
-      await book.save();   
-      if (Object.keys(updatedFields).length === 0) {
-        return reply.status(400).send({ message: 'No fields were updated' });
-      }
-      reply.send({ message: 'Book updated successfully', updatedData: updatedFields });
-    } catch (error) {
-      console.error('Error updating book:', error);
-      reply.status(500).send({ message: 'Failed to update book' });
-    }
-  };
-  
-  
+  }; 
   
   exports.deleteBook = async (req, reply) => {
     try {
@@ -129,7 +142,6 @@ exports.createBook = async (req, reply) => {
       reply.status(500).send({ message: 'Failed to delete book' });
     }
 };
-
 
 module.exports.createUser = async (req, reply) => {
     try {
@@ -196,4 +208,81 @@ module.exports.UpdateUser = async (req, reply) => {
         console.error("Error during user update:", err);
         reply.code(500).send({ status: false, error: err.message, message: "Failed to update user" });
     }
+};
+module.exports.setBookPrice = async (req, reply) => {
+  try {
+    const { bookId, priceInCoins } = req.body;
+    
+    const book = await Book.findByPk(bookId);
+    
+    if (!book) {
+      return reply.status(404).send({ message: 'Book not found' });
+    }
+    
+    book.priceInCoins = priceInCoins;
+    await book.save();
+    
+    return reply.status(200).send({
+      message: 'Book price set successfully',
+      data: { bookId, priceInCoins },
+    });
+  } catch (error) {
+    console.error('Error setting book price:', error);
+    return reply.status(500).send({ message: 'Internal Server Error' });
+  }
+};
+
+
+module.exports.setBookFree = async (req,reply) => {
+  try {
+    const { bookId, isFree } = req.body;
+    
+    const book = await Book.findByPk(bookId);
+    
+    if (!book) {
+      return res.status(404).json({ message: 'Book not found' });
+    }
+
+    book.isFree = isFree;
+    book.priceInCoins = 0; 
+    await book.save();
+    
+    return res.status(200).json({
+      message: `Book set to ${isFree ? 'free' : 'paid'} successfully`,
+      data: { bookId, isFree },
+    });
+  } catch (error) {
+    return res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
+
+module.exports.addCoinsToUser = async (req, reply) => {
+  try {
+   
+    if (req.user.role !== 'admin') {
+      return reply.status(403).send({ message: 'Permission denied' });
+    }
+    const { userId, coins } = req.body;
+   
+    if (isNaN(coins) || coins <= 0) {
+      return reply.status(400).send({ message: 'Invalid number of coins' });
+    }
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return reply.status(404).send({ message: 'User not found' });
+    }
+    user.coins += coins;
+    await user.save();
+    return reply.status(200).send({
+      message: `Successfully added ${coins} coins to user ${userId}`,
+      user: {
+        id: user.id,
+        coins: user.coins,
+      },
+    });
+  } catch (error) {
+    console.error('Error adding coins to user:', error);
+    return reply.status(500).send({ message: 'Internal Server Error' });
+  }
 };
