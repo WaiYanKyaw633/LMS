@@ -18,12 +18,10 @@ exports.viewBorrowedBooks = async (req, reply) => {
             attributes: ['title'], 
           },
         ],
-      });
-  
+      }); 
       if (borrowRecords.length === 0) {
         return reply.status(404).send({ message: 'No borrowed books found' });
-      }
-  
+      } 
       const result = borrowRecords.map((record) => ({
         Username: record.User.username,
         BookTitle: record.Book.title,
@@ -32,7 +30,7 @@ exports.viewBorrowedBooks = async (req, reply) => {
       }));
   
       reply.send({
-        message: 'Borrowed books data retrieved successfully',
+        message: 'Borrowed books are Here',
         data: result,
       });
     } catch (error) {
@@ -76,34 +74,46 @@ exports.createBook = async (req, reply) => {
     }
   };
   
- 
   exports.updateBook = async (req, reply) => {
     try {
-      const { id } = req.params;
-      const { title, author, category, stock } = req.body; 
+      const { id } = req.params; 
+      const { title, author, category, stock } = req.body;    
       const book = await Book.findByPk(id);
-  
-      if (!book) {
-        return reply.status(404).send({ message: 'Book not found' });
-      }
-      if (title) book.title = title;
-      if (author) book.author = author;
-      if (category) book.category = category;
-      if (stock !== undefined) book.stock = stock;  
-      await book.save();
-  
+      if (!book) {    
+      return reply.status(404).send({ message: 'Book not found' });
+      }  
+      if (title && title === book.title) {
+        return reply.status(400).send({ message: 'The new title must be different from the current title' });
+      }     
       const updatedFields = {};
-      if (title) updatedFields.title = book.title;
-      if (author) updatedFields.author = book.author;
-      if (category) updatedFields.category = book.category;
-      if (stock !== undefined) updatedFields.stock = book.stock;
-  
-      reply.send({ message: 'Book updated successfully', updatedFields });
+      if (title && title !== book.title) {
+        book.title = title; 
+        updatedFields.title = title;
+      }
+      if (author && author !== book.author) {
+        book.author = author;
+        updatedFields.author = author;
+      }
+      if (category && category !== book.category) {
+        book.category = category;
+        updatedFields.category = category;
+      }
+      if (stock !== undefined && stock !== book.stock) {
+        book.stock = stock;
+        updatedFields.stock = stock;
+      }
+      await book.save();   
+      if (Object.keys(updatedFields).length === 0) {
+        return reply.status(400).send({ message: 'No fields were updated' });
+      }
+      reply.send({ message: 'Book updated successfully', updatedData: updatedFields });
     } catch (error) {
       console.error('Error updating book:', error);
       reply.status(500).send({ message: 'Failed to update book' });
     }
   };
+  
+  
   
   exports.deleteBook = async (req, reply) => {
     try {
