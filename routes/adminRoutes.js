@@ -11,4 +11,5 @@ fastify.get('/admin/borrowed-books', { preHandler: authorizeRole(['admin']) }, a
   fastify.put('/admin/books/:id',  { preHandler: authorizeRole(['admin']) },adminController.updateBook); 
   fastify.delete('/admin/books/:id',  { preHandler: authorizeRole(['admin']) },adminController.deleteBook);
   fastify.post('/admin/users', { preHandler: authorizeRole(['admin']) }, adminController.createUser); 
+  fastify.put('/admin/updateusers/:id', { preHandler: authorizeRole(['admin']) }, adminController.UpdateUser);
 };

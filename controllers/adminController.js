@@ -2,6 +2,8 @@ const User = require('../models/User');
 const BorrowRecord = require('../models/BorrowRecord');
 const Book = require('../models/Book');
 const bcrypt=require('bcryptjs');
+const sequelize = require('../config/database');
+const Op = sequelize;
 
 exports.viewBorrowedBooks = async (req, reply) => {
     try {
@@ -153,5 +155,35 @@ module.exports.createUser = async (req, reply) => {
             error: err.message,
             message: "Failed to create user"
         });
+    }
+};
+module.exports.UpdateUser = async (req, reply) => {
+    try {
+        const { id } = req.params;
+        const { username, password, role } = req.body;       
+        if (username) {
+            const existingUser = await User.findOne({ where: { username, id: { [Op.ne]: id } } });
+            if (existingUser) {
+                return reply.code(400).send({ status: false, message: "Username is already taken by another user." });
+            }
+        }      
+        const validRole = ['user']; 
+        if (role && !validRole.includes(role)) {
+            return reply.code(400).send({ status: false, message: "Invalid role: choose User" });
+        }     
+        const hashedPassword = password ? await bcrypt.hash(password, 10) : undefined;    
+        const updateData = {};
+        if (username) updateData.username = username;
+        if (password) updateData.password = hashedPassword;
+        if (role) updateData.role = role;      
+        const updatedUser = await User.update(updateData, { where: { id } });    
+        if (updatedUser[0] === 0) { 
+            return reply.code(404).send({ status: false, message: "User not found" });
+        }         
+        reply.send({ status: true, message: "User updated successfully", user: updateData });
+
+    } catch (err) {
+        console.error("Error during user update:", err);
+        reply.code(500).send({ status: false, error: err.message, message: "Failed to update user" });
     }
 };
