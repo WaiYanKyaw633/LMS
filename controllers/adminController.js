@@ -259,21 +259,28 @@ module.exports.setBookFree = async (req,reply) => {
 
 module.exports.addCoinsToUser = async (req, reply) => {
   try {
-   
+    // Ensure the logged-in user is an admin
     if (req.user.role !== 'admin') {
       return reply.status(403).send({ message: 'Permission denied' });
     }
+
     const { userId, coins } = req.body;
-   
+
+    // Validate the input
     if (isNaN(coins) || coins <= 0) {
       return reply.status(400).send({ message: 'Invalid number of coins' });
     }
+
+    // Fetch the user from the database
     const user = await User.findByPk(userId);
     if (!user) {
       return reply.status(404).send({ message: 'User not found' });
     }
-    user.coins += coins;
+
+    // Update the user's coin balance
+    user.coins = (user.coins || 0) + coins;
     await user.save();
+
     return reply.status(200).send({
       message: `Successfully added ${coins} coins to user ${userId}`,
       user: {
