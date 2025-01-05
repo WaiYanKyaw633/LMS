@@ -40,119 +40,123 @@ exports.viewBorrowedBooks = async (req, reply) => {
   };
   exports.createBook = async (req, reply) => {
     try {
-        const { title, author, category, stock, priceInCoins, isFree } = req.body;
-
-        if (!title || !author || !category) {
-            return reply.status(400).send({ message: 'Title, author, and category are required' });
-        }
-
-        const existingBook = await Book.findOne({ where: { title } });
-        if (existingBook) {
-            return reply.status(400).send({ message: 'A book with this title already exists' });
-        }
-
-        const validStock = Number.isInteger(Number(stock)) ? Number(stock) : 0;
-        let finalPriceInCoins = 0;
-
-        if (isFree !== undefined && isFree !== null) {
-            if (isFree) {
-                if (priceInCoins && priceInCoins > 0) {
-                    return reply.status(400).send({
-                        message: 'A free book cannot have a priceInCoins value greater than 0.',
-                    });
-                }
-                finalPriceInCoins = 0; 
-            } else {
-               
-                if (!priceInCoins || priceInCoins <= 0) {
-                    return reply.status(400).send({
-                        message: 'A valid priceInCoins must be provided for non-free books',
-                    });
-                }
-                finalPriceInCoins = Number(priceInCoins);
-            }
-        }
+      const { title, author, category, stock, priceInCoins, isFree } = req.body;
   
-        const newBook = await Book.create({
-            title,
-            author,
-            category,
-            stock: validStock,
-            priceInCoins: finalPriceInCoins,
-            isFree: isFree === undefined || isFree === null || isFree === "" ? false : isFree,
-        });        
-        return reply.status(201).send({
-            message: 'Book created successfully',
-            book: newBook,
-        });
-    } catch (error) {
-        console.error('Error creating book:', error);
-        return reply.status(500).send({ message: 'Failed to create book' });
-    }
-};
-
-  
-  module.exports.updateBook = async (req, reply) => {
-    try {
-      const { id } = req.params;
-      const { title, author, category, priceInCoins, isFree, stock } = req.body;
-    const book = await Book.findByPk(id);
-      if (!book) {
-        return reply.status(404).send({ message: 'Book not found' });
+      if (!title || !author || !category) {
+        return reply.status(400).send({ message: 'Title, author, and category are required' });
       }
   
-      const updatedFields = {};
-      if (title) {
-        book.title = title;
-        updatedFields.title = title;
+      const existingBook = await Book.findOne({ where: { title } });
+      if (existingBook) {
+        return reply.status(400).send({ message: 'A book with this title already exists' });
       }
-      if (author) {
-        book.author = author;
-        updatedFields.author = author;
-      }
-      if (category) {
-        book.category = category;
-        updatedFields.category = category;
-      }
+
+      const validStock = Number.isInteger(Number(stock)) ? Number(stock) : 0;
   
-      if (isFree !== undefined && isFree !== '') {
-        book.isFree = isFree;
-        updatedFields.isFree = isFree;
-  
+      let finalPriceInCoins = 0; 
+      if (isFree !== undefined && isFree !== null) {
         if (isFree) {
-         
-          book.priceInCoins = 0;
-          updatedFields.priceInCoins = 0;
-        } else {
           
-          if (!priceInCoins || priceInCoins <= 0) {
+          if (priceInCoins && priceInCoins > 0) {
             return reply.status(400).send({
-              message: 'A valid priceInCoins must be provided for non-free books.',
+              message: 'It is free book cant add coin ',
             });
           }
-          book.priceInCoins = priceInCoins;
-          updatedFields.priceInCoins = priceInCoins;
+          finalPriceInCoins = 0;  
+        } else {    
+          if (!priceInCoins || priceInCoins <= 0) {
+            return reply.status(400).send({
+              message: 'It is not free plz add coin',
+            });
+          }
+          finalPriceInCoins = Number(priceInCoins);
         }
-      }
-  
-      if (stock !== undefined && stock !== '') {
-        book.stock = stock;
-        updatedFields.stock = stock;
-      }
-  
-      
-      await book.save();
-  
-      return reply.status(200).send({
-        message: 'Book updated successfully',
-        updatedFields,
+      }     
+      const newBook = await Book.create({
+        title,
+        author,
+        category,
+        stock: validStock,
+        priceInCoins: finalPriceInCoins,
+        isFree: isFree === undefined || isFree === null ? false : isFree,
+      });
+    
+      return reply.status(201).send({
+        message: 'Book created successfully',
+        book: newBook,
       });
     } catch (error) {
-      console.error('Error updating book:', error);
-      return reply.status(500).send({ message: 'Internal Server Error' });
+      console.error('Error creating book:', error);
+      return reply.status(500).send({ message: 'Failed to create book' });
     }
   };
   
+  
+module.exports.updateBook = async (req, reply) => {
+  try {
+    const { id } = req.params;
+    const { title, author, category, priceInCoins, isFree, stock } = req.body;
+
+    const book = await Book.findByPk(id);
+    if (!book) {
+      return reply.status(404).send({ message: 'Book not found' });
+    }
+
+    const updatedFields = {};
+    if (title) {
+      book.title = title;
+      updatedFields.title = title;
+    }
+    if (author) {
+      book.author = author;
+      updatedFields.author = author;
+    }
+    if (category) {
+      book.category = category;
+      updatedFields.category = category;
+    }
+
+    if (isFree !== undefined && isFree !== '') {
+      if (isFree) {
+        if (priceInCoins && priceInCoins > 0) {
+          return reply.status(400).send({
+            message: 'It is free book cant add coin ',
+          });
+        }
+        book.isFree = true;
+        book.priceInCoins = 0;
+        updatedFields.isFree = true;
+        updatedFields.priceInCoins = 0;
+      } else {
+        if (!priceInCoins || priceInCoins <= 0) {
+          return reply.status(400).send({
+            message:'It is not free plz add coin',
+          });
+        }
+        book.isFree = false;
+        book.priceInCoins = priceInCoins;
+        updatedFields.isFree = false;
+        updatedFields.priceInCoins = priceInCoins;
+      }
+    }
+
+    if (stock !== undefined && stock !== '') {
+      book.stock = stock;
+      updatedFields.stock = stock;
+    }
+
+    await book.save();
+
+    return reply.status(200).send({
+      message: 'Book updated successfully',
+      updatedFields,
+    });
+  } catch (error) {
+    console.error('Error updating book:', error);
+    return reply.status(500).send({ message: 'Internal Server Error' });
+  }
+};
+
   
   
   exports.viewBooks = async (req, reply) => {

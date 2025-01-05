@@ -257,43 +257,6 @@ exports.mostBorrowedBookInCategory = async (req, reply) => {
   }
 };
 
-
-
-
-
-exports.buyBookWithCoins = async (req, reply) => {
-  try {
-    const { userId, bookId } = req.body;
-
-    const book = await Book.findByPk(bookId);
-
-    if (!book) {
-      return res.status(404).json({ message: 'Book not found' });
-    }
-    const user = await User.findByPk(userId);
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-    if (book.isFree) {
-      return res.status(200).json({ message: 'Book purchased successfully for free' });
-    }
-    if (user.coins < book.priceInCoins) {
-      return res.status(400).json({ message: 'Insufficient coins' });
-    }
-    user.coins -= book.priceInCoins;
-    await user.save();
-
-    await UserBook.create({ userId, bookId });
-    return res.status(200).json({
-      message: 'Book purchased successfully with coins',
-    });
-  } catch (error) {
-    return res.status(500).json({ message: 'Internal Server Error' });
-  }
-};
-
-
-
 exports.getUserProfile = async (req, reply) => {
   try {
     const user = await User.findByPk(req.user.id, {
