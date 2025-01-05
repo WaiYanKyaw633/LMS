@@ -13,6 +13,6 @@ fastify.get('/admin/borrowed-books', { preHandler: authorizeRole(['admin']) }, a
   fastify.post('/admin/users', { preHandler: authorizeRole(['admin']) }, adminController.createUser); 
   fastify.put('/admin/updateusers/:id', { preHandler: authorizeRole(['admin']) }, adminController.UpdateUser);
   fastify.put('/set-book-price', { preHandler: authorizeRole(['admin']) }, adminController.setBookPrice);
-  fastify.put('/set-book-free', { preHandler: authorizeRole(['admin']) }, adminController.setBookFree);
+
   fastify.post('/addcoin/:id', { preHandler: authorizeRole(['admin']) }, adminController.addCoinsToUser);
 };

@@ -38,46 +38,69 @@ exports.viewBorrowedBooks = async (req, reply) => {
       reply.status(500).send({ error: 'Failed to fetch borrowed books' });
     }
   };
-  
   exports.createBook = async (req, reply) => {
     try {
-      const { title, author, category, stock, priceInCoins, isFree } = req.body;
+        const { title, author, category, stock, priceInCoins, isFree } = req.body;
+
+        if (!title || !author || !category) {
+            return reply.status(400).send({ message: 'Title, author, and category are required' });
+        }
+
+        const existingBook = await Book.findOne({ where: { title } });
+        if (existingBook) {
+            return reply.status(400).send({ message: 'A book with this title already exists' });
+        }
+
+        const validStock = Number.isInteger(Number(stock)) ? Number(stock) : 0;
+        let finalPriceInCoins = 0;
+
+        if (isFree !== undefined && isFree !== null) {
+            if (isFree) {
+                if (priceInCoins && priceInCoins > 0) {
+                    return reply.status(400).send({
+                        message: 'A free book cannot have a priceInCoins value greater than 0.',
+                    });
+                }
+                finalPriceInCoins = 0; 
+            } else {
+               
+                if (!priceInCoins || priceInCoins <= 0) {
+                    return reply.status(400).send({
+                        message: 'A valid priceInCoins must be provided for non-free books',
+                    });
+                }
+                finalPriceInCoins = Number(priceInCoins);
+            }
+        }
   
-      if (!title || !author || !category) {
-        return reply.status(400).send({ message: 'All fields are required' });
-      } 
-      const existingBook = await Book.findOne({ where: { title } });
-      if (existingBook) {
-        return reply.status(400).send({ message: 'A book with this title already exists' });
-      }
-      const validStock = Number.isInteger(Number(stock)) ? Number(stock) : 0;
-      const validPriceInCoins = Number.isInteger(Number(priceInCoins)) ? Number(priceInCoins) : 0;
-  
-      const newBook = await Book.create({
-        title,
-        author,
-        category,
-        stock: validStock, 
-        priceInCoins: validPriceInCoins, 
-        isFree: isFree === undefined || isFree === null || isFree === "" ? false : isFree,
-      });
-  
-      return reply.status(201).send({ message: 'Book created successfully', book: newBook });
+        const newBook = await Book.create({
+            title,
+            author,
+            category,
+            stock: validStock,
+            priceInCoins: finalPriceInCoins,
+            isFree: isFree === undefined || isFree === null || isFree === "" ? false : isFree,
+        });        
+        return reply.status(201).send({
+            message: 'Book created successfully',
+            book: newBook,
+        });
     } catch (error) {
-      console.error('Error creating book:', error);
-      return reply.status(500).send({ message: 'Failed to create book' });
+        console.error('Error creating book:', error);
+        return reply.status(500).send({ message: 'Failed to create book' });
     }
-  };
+};
+
   
   module.exports.updateBook = async (req, reply) => {
     try {
       const { id } = req.params;
       const { title, author, category, priceInCoins, isFree, stock } = req.body;
-  
-      const book = await Book.findByPk(id);
+    const book = await Book.findByPk(id);
       if (!book) {
         return reply.status(404).send({ message: 'Book not found' });
       }
+  
       const updatedFields = {};
       if (title) {
         book.title = title;
@@ -91,19 +114,35 @@ exports.viewBorrowedBooks = async (req, reply) => {
         book.category = category;
         updatedFields.category = category;
       }
-      if (priceInCoins) {
-        book.priceInCoins = priceInCoins;
-        updatedFields.priceInCoins = priceInCoins;
-      }
+  
       if (isFree !== undefined && isFree !== '') {
         book.isFree = isFree;
         updatedFields.isFree = isFree;
+  
+        if (isFree) {
+         
+          book.priceInCoins = 0;
+          updatedFields.priceInCoins = 0;
+        } else {
+          
+          if (!priceInCoins || priceInCoins <= 0) {
+            return reply.status(400).send({
+              message: 'A valid priceInCoins must be provided for non-free books.',
+            });
+          }
+          book.priceInCoins = priceInCoins;
+          updatedFields.priceInCoins = priceInCoins;
+        }
       }
+  
       if (stock !== undefined && stock !== '') {
         book.stock = stock;
         updatedFields.stock = stock;
       }
+  
+      
       await book.save();
+  
       return reply.status(200).send({
         message: 'Book updated successfully',
         updatedFields,
@@ -233,51 +272,25 @@ module.exports.setBookPrice = async (req, reply) => {
 };
 
 
-module.exports.setBookFree = async (req,reply) => {
-  try {
-    const { bookId, isFree } = req.body;
-    
-    const book = await Book.findByPk(bookId);
-    
-    if (!book) {
-      return res.status(404).json({ message: 'Book not found' });
-    }
-
-    book.isFree = isFree;
-    book.priceInCoins = 0; 
-    await book.save();
-    
-    return res.status(200).json({
-      message: `Book set to ${isFree ? 'free' : 'paid'} successfully`,
-      data: { bookId, isFree },
-    });
-  } catch (error) {
-    return res.status(500).json({ message: 'Internal Server Error' });
-  }
-};
-
-
 module.exports.addCoinsToUser = async (req, reply) => {
   try {
-    // Ensure the logged-in user is an admin
+    
     if (req.user.role !== 'admin') {
       return reply.status(403).send({ message: 'Permission denied' });
     }
 
     const { userId, coins } = req.body;
 
-    // Validate the input
+   
     if (isNaN(coins) || coins <= 0) {
       return reply.status(400).send({ message: 'Invalid number of coins' });
     }
 
-    // Fetch the user from the database
     const user = await User.findByPk(userId);
     if (!user) {
       return reply.status(404).send({ message: 'User not found' });
     }
 
-    // Update the user's coin balance
     user.coins = (user.coins || 0) + coins;
     await user.save();
 
