@@ -1,4 +1,3 @@
-
 const User=require('../models/User');
 const bcrypt=require('bcryptjs');
 const jwt = require("jsonwebtoken");
@@ -17,17 +16,14 @@ exports.login = async (req, reply) => {
         if (!isPasswordValid) {
             return reply.status(401).send({ error: "Invalid passwords." });
         }
-
-
         if (!process.env.JWT_SECRET) {
             throw new Error("JWT_SECRET is not configured.");
         }
         const token = jwt.sign(
             { id: user.id, name: user.name, role: user.role },
             process.env.JWT_SECRET,
-            { expiresIn: "6h" }
+            { expiresIn: "24h" }
         );
-
 
         reply.status(200).send({
             message: "Login successful.",
