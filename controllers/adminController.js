@@ -4,6 +4,7 @@ const Book = require('../models/Book');
 const bcrypt=require('bcryptjs');
 const sequelize = require('../config/database');
 const Op = sequelize;
+const Sequelize = require('sequelize');
 
 exports.viewBorrowedBooks = async (req, reply) => {
     try {
@@ -90,8 +91,7 @@ exports.viewBorrowedBooks = async (req, reply) => {
       return reply.status(500).send({ message: 'Failed to create book' });
     }
   };
-  
-  
+   
 module.exports.updateBook = async (req, reply) => {
   try {
     const { id } = req.params;
@@ -156,9 +156,7 @@ module.exports.updateBook = async (req, reply) => {
     return reply.status(500).send({ message: 'Internal Server Error' });
   }
 };
-
-  
-  
+ 
   exports.viewBooks = async (req, reply) => {
     try {
       const books = await Book.findAll({ 
@@ -252,6 +250,48 @@ module.exports.UpdateUser = async (req, reply) => {
         reply.code(500).send({ status: false, error: err.message, message: "Failed to update user" });
     }
 };
+
+exports.DeleteUser=async (req, reply)=>{
+  const {id}=req.params;
+  try{
+    const user=await User.findByPk(id);
+    if(!user) return reply.code(404).send({message:"User not found"});
+    await user.destroy();
+    return reply.code(200).send({message:"User Deleted Successfully"});
+  }catch(err){
+    return reply.code(404).send({error: err.message});
+  }
+};
+
+exports.viewUser = async (req, reply) => {
+  try {
+    const users = await User.findAll({
+      attributes: [
+        'id', 
+        'username', 
+        'coins',
+        [Sequelize.fn('COUNT', Sequelize.col('borrowrecords.id')), 'borrowcount'], 
+      ],
+      include: [
+        {
+          model: BorrowRecord, 
+          attributes: [], 
+        },
+      ],
+      where: { role: 'user' }, 
+      group: ['User.id'], 
+    });
+    if (!users || users.length === 0) {
+      return reply.code(404).send({ message: "No users found" }); 
+    }
+    return reply.code(200).send(users); 
+  } catch (err) {
+    return reply.code(500).send({ error: err.message }); 
+  }
+};
+
+
+
 module.exports.setBookPrice = async (req, reply) => {
   try {
     const { bookId, priceInCoins } = req.body;
@@ -274,7 +314,6 @@ module.exports.setBookPrice = async (req, reply) => {
     return reply.status(500).send({ message: 'Internal Server Error' });
   }
 };
-
 
 module.exports.addCoinsToUser = async (req, reply) => {
   try {

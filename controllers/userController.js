@@ -3,9 +3,6 @@ const Sequelize = require('sequelize');
 const Op = Sequelize.Op;
 const sequelize = require('sequelize');
 
-
-
-
 exports.viewBooksByCategory = async (req, reply) => {
   const { category } = req.params;
   try {
@@ -90,7 +87,7 @@ exports.returnBook = async (req, reply) => {
     });
 
     if (!borrowRecord) {
-      return reply.status(404).send({ message: 'No such borrowed book record found' });
+      return reply.status(404).send({ message: 'you dont borrow this book' });
     }
     await borrowRecord.update({ returnedAt: new Date() });
     await Book.increment('stock', { by: 1, where: { id: bookId } });
@@ -167,11 +164,9 @@ exports.viewAllBooks = async (req, reply) => {
     const books = await Book.findAll({
       attributes: ['title', 'author', 'category'],
     });
-
     if (books.length === 0) {
       return reply.status(404).send({ message: 'No books found' });
     }
-
     reply.send(books);
   } catch (error) {
     console.error('Error fetching books:', error);
