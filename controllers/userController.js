@@ -2,6 +2,7 @@ const { BorrowRecord, Book, User } = require('../models');
 const Sequelize = require('sequelize');
 const Op = Sequelize.Op;
 const sequelize = require('sequelize');
+const CoinTransaction = require('../models/CoinTransaction');
 
 exports.viewBooksByCategory = async (req, reply) => {
   const { category } = req.params;
@@ -76,7 +77,6 @@ exports.borrowBook = async (req, reply) => {
     reply.status(500).send({ error: 'Failed to borrow book' });
   }
 };
-
 
 exports.returnBook = async (req, reply) => {
   const { bookId } = req.params;
@@ -231,7 +231,6 @@ exports.mostBorrowedBookInCategory = async (req, reply) => {
       order: [[sequelize.fn('COUNT', sequelize.col('bookId')), 'DESC']],
       limit: 3,
     });
-
     if (!mostBorrowedBook || mostBorrowedBook.length === 0) {
       return reply.status(404).send({ message: 'No books found in this category or no borrow records' });
     }
@@ -255,21 +254,45 @@ exports.mostBorrowedBookInCategory = async (req, reply) => {
 exports.getUserProfile = async (req, reply) => {
   try {
     const user = await User.findByPk(req.user.id, {
-      attributes: ['username', 'coins'] 
+      attributes: ['username', 'coins']
     });
-
-    
     if (!user) {
       return reply.status(404).send({ message: 'User not found' });
     }
-
-    
     reply.status(200).send({
       username: user.username,
-      coinsbalance:user.coins,
+      coinsbalance: user.coins,
     });
   } catch (error) {
     console.error('Error fetching user profile:', error);
     reply.status(500).send({ error: 'Failed to fetch user profile' });
+  }
+};
+
+exports.totalSpendCoin = async (req, reply) => {
+  const userId = req.user.id;
+  try {  
+    const userCoinData = await User.findOne({
+      where: {id:userId }, 
+      include: [{
+        model: CoinTransaction,
+        attributes: [],
+      }],
+      attributes: [
+        'username',
+        [sequelize.fn('SUM', sequelize.col('CoinTransactions.amount')), 'totalSpentCoins'], 
+      ],
+      group: ['User.id'], 
+    });   
+    if (!userCoinData) {
+      return reply.status(404).send({ message: 'User not found or no spent transactions' });
+    }  
+    return reply.status(200).send({
+      message: 'Total Spent Coins',
+      data: userCoinData,
+    });
+  } catch (error) {
+    console.error('Error retrieving total spent coins for user:', error);
+    return reply.status(500).send({ message: 'Failed to fetch total spent coins for user' });
   }
 };

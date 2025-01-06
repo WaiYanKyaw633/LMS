@@ -13,6 +13,7 @@ const userRoutes = async function (fastify) {
     fastify.get('/most-popular-books', { preHandler: authorizeRole(['user']) }, userController.mostPopularBooks);
     fastify.get('/most-borrowed-book/:category', { preHandler: authorizeRole(['user']) }, userController.mostBorrowedBookInCategory);
     fastify.get('/viewprofile', { preHandler: authorizeRole(['user']) }, userController.getUserProfile);
+    fastify.get('/totalcoin', { preHandler: authorizeRole(['user']) }, userController.totalSpendCoin);
  
 
 

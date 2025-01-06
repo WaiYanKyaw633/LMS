@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const BorrowRecord = require('../models/BorrowRecord');
 const Book = require('../models/Book');
+const CoinTransaction = require('../models/CoinTransaction');
 const bcrypt=require('bcryptjs');
 const sequelize = require('../config/database');
 const Op = sequelize;
@@ -290,8 +291,6 @@ exports.viewUser = async (req, reply) => {
   }
 };
 
-
-
 module.exports.setBookPrice = async (req, reply) => {
   try {
     const { bookId, priceInCoins } = req.body;
@@ -317,26 +316,23 @@ module.exports.setBookPrice = async (req, reply) => {
 
 module.exports.addCoinsToUser = async (req, reply) => {
   try {
-    
     if (req.user.role !== 'admin') {
       return reply.status(403).send({ message: 'Permission denied' });
     }
-
     const { userId, coins } = req.body;
-
-   
-    if (isNaN(coins) || coins <= 0) {
+    if (isNaN(coins) || coins <= 0 || coins === "") {
       return reply.status(400).send({ message: 'Invalid number of coins' });
     }
-
     const user = await User.findByPk(userId);
     if (!user) {
       return reply.status(404).send({ message: 'User not found' });
     }
-
+    await CoinTransaction.create({
+      userId,
+      amount: coins,
+    });
     user.coins = (user.coins || 0) + coins;
     await user.save();
-
     return reply.status(200).send({
       message: `Successfully added ${coins} coins to user ${userId}`,
       user: {
@@ -349,3 +345,33 @@ module.exports.addCoinsToUser = async (req, reply) => {
     return reply.status(500).send({ message: 'Internal Server Error' });
   }
 };
+
+exports.vipuser= async (req, reply) => {
+  try {
+    const usersWithTotalCoins = await User.findAll({
+      where: { role: 'user' }, 
+      include: [{
+        model: CoinTransaction,
+        attributes: [],
+      }],
+      attributes: [
+        'id',
+        'username',
+        [sequelize.fn('SUM', sequelize.col('CoinTransactions.amount')), 'totalCoins'],
+      ],
+      group: ['User.id'],
+      order: [[sequelize.col('totalCoins'), 'DESC']], 
+    });
+    if (!usersWithTotalCoins || usersWithTotalCoins.length === 0) {
+      return reply.status(404).send({ message: 'No users found' });
+    }
+    return reply.status(200).send({
+      message: 'Users and their total coins',
+      data: usersWithTotalCoins,
+    });
+  } catch (error) {
+    console.error('Error retrieving total coins for users:', error);
+    return reply.status(500).send({ message: 'Failed to fetch users\' total coins' });
+  }
+};
+
