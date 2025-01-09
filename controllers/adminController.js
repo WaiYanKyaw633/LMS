@@ -270,7 +270,13 @@ module.exports.UpdateUser = async (req, reply) => {
         if (username) updateData.username = username;
         if (password) updateData.password = hashedPassword;
         if (role) updateData.role = role;      
-        const updatedUser = await User.update(updateData, { where: { id } });    
+        const updatedUser = await User.update(updateData, { where: { id } });   
+        if (Object.keys(updateData).length === 0) {
+          return reply.code(400).send({
+            status: false,
+            message: "User not updated any information.",
+          });
+        } 
         if (updatedUser[0] === 0) { 
             return reply.code(404).send({ status: false, message: "User not found" });
         }         
