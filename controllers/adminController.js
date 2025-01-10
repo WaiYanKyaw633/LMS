@@ -164,28 +164,21 @@ exports.viewBooks = async (req, reply) => {
       attributes: ['title', 'author', 'category'],
     });
 
-    // Group books by category
     const result = new Map();
     books.forEach((book) => {
       const category = book.category;
-
-      // If the category does not exist in the map, initialize it
       if (!result.has(category)) {
         result.set(category, { 
           books: [], 
           count: 0 
         });
       }
-
-      // Add the book to the category group and increment the count
       result.get(category).books.push({
         Title: book.title,
         Author: book.author,
       });
       result.get(category).count += 1;
     });
-
-    // Convert the map to an array of grouped categories with book counts
     const finalResult = Array.from(result.entries()).map(([category, data]) => ({
       category,
       bookCount: data.count,

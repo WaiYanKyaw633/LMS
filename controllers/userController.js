@@ -164,13 +164,32 @@ exports.viewAllBooks = async (req, reply) => {
     const books = await Book.findAll({
       attributes: ['title', 'author', 'category'],
     });
-    if (books.length === 0) {
-      return reply.status(404).send({ message: 'No books found' });
-    }
-    reply.send(books);
+    const result = new Map();
+    books.forEach(ommpr => {
+      const category = ommpr.category;
+      if (!result.has(category)) {
+        result.set(category,
+          {
+            books: [],
+            count: 0,
+          });
+      }
+      result.get(category).books.push({
+        Title: ommpr.title,
+        Author: ommpr.author
+      });
+      result.get(category).count += 1;
+    });
+    const fff = Array.from(result.entries()).map(([category, data]) => ({
+      category,
+      bookCount: data.count,
+      books: data.books,
+    }));
+
+    reply.send(fff);
   } catch (error) {
     console.error('Error fetching books:', error);
-    reply.status(500).send({ error: 'Failed to fetch books' });
+    reply.status(500).send({ message: 'Failed to retrieve books' });
   }
 };
 
@@ -271,22 +290,22 @@ exports.getUserProfile = async (req, reply) => {
 
 exports.totalSpendCoin = async (req, reply) => {
   const userId = req.user.id;
-  try {  
+  try {
     const userCoinData = await User.findOne({
-      where: {id:userId }, 
+      where: { id: userId },
       include: [{
         model: CoinTransaction,
         attributes: [],
       }],
       attributes: [
         'username',
-        [sequelize.fn('SUM', sequelize.col('CoinTransactions.amount')), 'totalSpentCoins'], 
+        [sequelize.fn('SUM', sequelize.col('CoinTransactions.amount')), 'totalSpentCoins'],
       ],
-      group: ['User.id'], 
-    });   
+      group: ['User.id'],
+    });
     if (!userCoinData) {
       return reply.status(404).send({ message: 'User not found or no spent transactions' });
-    }  
+    }
     return reply.status(200).send({
       message: 'Total Spent Coins',
       data: userCoinData,
